@@ -14,3 +14,8 @@ screenshots/
 .grok/status
 .project_id
 .node_modules.lock
+AGENTS.md
+AGENTS.project.md
+.data/
+.pglite/
+public/__grok/

@@ -15,6 +15,8 @@ export async function ready(): Promise<Sql> {
     throw err;
   });
   const sql = await g.__turfReady__;
+  // Re-enter getSql so an HMR-loaded migration glob (e.g. 0004_waitlist.sql)
+  // applies without restarting the dev server.
   await getSql();
   await seedWaitlistIfEmpty(sql);
   await seedNoshowCandidateIfEmpty(sql);

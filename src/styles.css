@@ -1,28 +1,43 @@
-@import url("https://fonts.googleapis.com/css2?family=Barlow+Condensed:wght@600;700&family=Figtree:ital,wght@0,400;0,500;0,600;0,700;1,400&display=swap");
 @import "tailwindcss";
-@import "tw-animate-css";
 
 @theme {
+  --font-display: "Bricolage Grotesque", ui-sans-serif, system-ui, sans-serif;
+  --font-sans: "Figtree", ui-sans-serif, system-ui, sans-serif;
+  --font-mono: "IBM Plex Mono", ui-monospace, "SF Mono", monospace;
+
   --color-bg: #07110c;
+  --color-bg-2: #0a1711;
   --color-surface: #0e1a14;
-  --color-raised: #13261c;
+  --color-surface-2: #15241c;
+  --color-surface-3: #1c2e24;
   --color-fg: #e8f2eb;
   --color-muted: #8aa394;
   --color-faint: #5c7366;
   --color-accent: #3dcf8a;
-  --color-accent-fg: #07110c;
-  --color-border: #1d3328;
-  --color-danger: #e06b63;
-  --color-warn: #d6b25a;
-  --font-sans: "Figtree", ui-sans-serif, system-ui, sans-serif;
-  --font-display: "Barlow Condensed", "Figtree", ui-sans-serif, sans-serif;
-  --radius-sm: 0.5rem;
-  --radius-md: 0.75rem;
-  --radius-lg: 1rem;
-  --radius-xl: 1.5rem;
+  --color-accent-2: #249e64;
+  --color-accent-fg: #062010;
+  --color-border: #24382d;
+  --color-danger: #e85d4c;
+  --color-warn: #c9a227;
+  --color-info: #7eb6d6;
+  --color-good: #3dcf8a;
+
+  --radius-xs: 4px;
+  --radius-sm: 8px;
+  --radius-md: 12px;
+  --radius-lg: 18px;
+  --radius-xl: 28px;
+  --radius-2xl: 36px;
+
+  --shadow-border: 0 0 0 1px color-mix(in oklab, var(--color-fg) 10%, transparent);
 }
 
 @layer base {
+  button:not(:disabled),
+  [role="button"]:not(:disabled) {
+    cursor: pointer;
+  }
+
   html {
     -webkit-font-smoothing: antialiased;
     -moz-osx-font-smoothing: grayscale;
@@ -31,30 +46,108 @@
   }
 
   body {
-    min-height: 100dvh;
+    font-family: var(--font-sans);
     background: var(--color-bg);
     color: var(--color-fg);
-    font-family: var(--font-sans);
+    min-height: 100dvh;
   }
 
   h1, h2, h3 {
+    font-family: var(--font-display);
     text-wrap: balance;
+    letter-spacing: -0.03em;
   }
 
   p {
     text-wrap: pretty;
   }
+}
 
-  button:not(:disabled),
-  [role="button"]:not(:disabled) {
-    cursor: pointer;
-  }
+[data-theme="day"] {
+  --color-bg: #efe8d8;
+  --color-bg-2: #e7dfcc;
+  --color-surface: #fbf6ea;
+  --color-surface-2: #fffdf6;
+  --color-surface-3: #e7efe4;
+  --color-fg: #142018;
+  --color-muted: #5d6e62;
+  --color-faint: #849388;
+  --color-accent: #0f7a4a;
+  --color-accent-2: #0b5c38;
+  --color-accent-fg: #f6fff8;
+  --color-border: #d5ccb4;
+  --color-danger: #c44738;
+  --color-warn: #a67c12;
+  --color-info: #2f6f8f;
+  --color-good: #0f7a4a;
+  --shadow-border:
+    0 0 0 1px rgba(20, 32, 24, 0.08),
+    0 1px 2px -1px rgba(20, 32, 24, 0.06),
+    0 2px 6px rgba(20, 32, 24, 0.04);
+}
 
-  @media (prefers-reduced-motion: reduce) {
-    *, *::before, *::after {
-      animation-duration: 0.01ms !important;
-      animation-iteration-count: 1 !important;
-      transition-duration: 0.01ms !important;
-    }
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
   }
 }
+
+.pitch-grid {
+  background-image:
+    linear-gradient(to right, color-mix(in oklab, var(--color-accent) 14%, transparent) 1px, transparent 1px),
+    linear-gradient(to bottom, color-mix(in oklab, var(--color-accent) 14%, transparent) 1px, transparent 1px);
+  background-size: 48px 48px;
+}
+
+.stagger-in > * {
+  animation: rise 400ms cubic-bezier(0.22, 1, 0.36, 1) both;
+}
+.stagger-in > *:nth-child(1) { animation-delay: 0ms; }
+.stagger-in > *:nth-child(2) { animation-delay: 40ms; }
+.stagger-in > *:nth-child(3) { animation-delay: 80ms; }
+.stagger-in > *:nth-child(4) { animation-delay: 120ms; }
+.stagger-in > *:nth-child(5) { animation-delay: 160ms; }
+.stagger-in > *:nth-child(6) { animation-delay: 200ms; }
+
+@keyframes rise {
+  from {
+    opacity: 0;
+    transform: translateY(10px);
+    filter: blur(3px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+    filter: blur(0);
+  }
+}
+
+.tabular {
+  font-variant-numeric: tabular-nums;
+}
+
+@media print {
+  header,
+  nav,
+  aside,
+  .no-print {
+    display: none !important;
+  }
+  main {
+    padding: 0 !important;
+  }
+  body,
+  [data-theme="day"],
+  [data-theme="night"] {
+    background: #fff !important;
+    color: #142018 !important;
+  }
+  .print-sheet,
+  .print-qr {
+    box-shadow: none !important;
+    background: #fff !important;
+  }
+}
+

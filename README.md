@@ -6,10 +6,12 @@ Night floodlit 5-a-side turf booking for India. Owners share a link. Players req
 
 ## What it does
 
-- **Public booking** (`/b/:slug`) — pick a date and slot, send a request
-- **Owner desk** (`/desk`) — confirm or decline after UPI lands
-- **Demo turf** (`/b/demo`) — try the flow without signing up
-- Times are **IST**. Slots that have already started cannot be booked.
+- **Public booking** (`/v/:slug`) — pick a date and slot, send a request
+- **Owner desk** (`/app`) — confirm or decline after UPI lands
+- **Demo turf** (`/v/greenfield`) — try the flow without signing up
+- Times are **IST**. Two people cannot hold the same hour.
+
+Phase 1 is built for a solo owner: no payment gateway, no customer accounts, no in-app chat.
 
 ## Stack
 
@@ -30,9 +32,9 @@ Open [http://localhost:8080](http://localhost:8080).
 | Path | Who |
 |---|---|
 | `/` | Landing |
-| `/b/demo` | Public booking (demo venue) |
+| `/v/greenfield` | Public booking (demo venue) |
 | `/login` | Owner sign in / sign up |
-| `/desk` | Owner dashboard |
+| `/app` | Owner desk |
 
 Production needs `DATABASE_URL` (Postgres) plus Better Auth secrets. Do not commit `.env`.
 
