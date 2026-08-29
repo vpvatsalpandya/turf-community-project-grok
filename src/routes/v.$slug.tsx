@@ -126,7 +126,7 @@ function VenuePage() {
                         disabled={!s.available}
                         onClick={() => setPicked(s)}
                         className={cn(
-                          "rounded-lg px-2 py-2 text-left text-xs shadow-[var(--shadow-border)] transition-colors",
+                          "slot-press rounded-lg px-2 py-2 text-left text-xs shadow-[var(--shadow-border)] transition-colors",
                           s.available
                             ? "bg-surface-2 hover:bg-surface-3"
                             : "bg-surface opacity-40",
@@ -238,7 +238,7 @@ function RequestSheet({
 
   return (
     <div className="fixed inset-0 z-40 flex items-end justify-center bg-bg/70 p-0 md:items-center md:p-6">
-      <div className="max-h-[92dvh] w-full max-w-lg overflow-y-auto rounded-t-3xl bg-surface p-5 shadow-[var(--shadow-border)] md:rounded-3xl">
+      <div className="sheet-up max-h-[92dvh] w-full max-w-lg overflow-y-auto rounded-t-3xl bg-surface p-5 shadow-[var(--shadow-border)] md:rounded-3xl">
         <div className="flex items-start justify-between gap-3">
           <div>
             <p className="text-xs uppercase tracking-wide text-faint">Request this slot</p>

@@ -17,11 +17,14 @@ export const Route = createRootRoute({
         content: "Booking desk for turf owners in India. Customers request a slot. You confirm after the UPI hits.",
       },
       { name: "theme-color", content: "#07110c" },
+      { name: "apple-mobile-web-app-title", content: APP_NAME },
+      { name: "apple-mobile-web-app-capable", content: "yes" },
+      { name: "mobile-web-app-capable", content: "yes" },
     ],
     links: [
       { rel: "icon", type: "image/svg+xml", href: "/favicon.svg" },
       { rel: "stylesheet", href: appCss },
-      { rel: "manifest", href: "/__grok/manifest.webmanifest" },
+      { rel: "manifest", href: "/manifest.webmanifest" },
       { rel: "apple-touch-icon", href: "/icon-192.png" },
       {
         rel: "stylesheet",

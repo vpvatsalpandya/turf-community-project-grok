@@ -1,3 +1,4 @@
+import { useEffect } from "react";
 import { Link, useRouterState } from "@tanstack/react-router";
 import { CalendarDays, ClipboardList, LayoutGrid, MoreHorizontal, PieChart } from "lucide-react";
 import { UserButton } from "@/lib/auth/gates";
@@ -30,9 +31,20 @@ export function AppShell({
   const { user, isPending } = useCurrentUserState();
   const path = useRouterState({ select: (s) => s.location.pathname });
 
+  useEffect(() => {
+    const root = document.documentElement;
+    const meta = document.querySelector('meta[name="theme-color"]');
+    root.dataset.theme = "day";
+    meta?.setAttribute("content", "#efe8d8");
+    return () => {
+      delete root.dataset.theme;
+      meta?.setAttribute("content", "#07110c");
+    };
+  }, []);
+
   if (isPending) {
     return (
-      <div data-theme="day" className="grid min-h-dvh place-items-center bg-bg text-muted">
+      <div data-theme="day" className="grid min-h-dvh place-items-center bg-bg text-base text-muted">
         Opening the desk…
       </div>
     );
@@ -40,7 +52,7 @@ export function AppShell({
   if (!user) return <RedirectToSignIn to="/login" />;
 
   return (
-    <div data-theme="day" className="min-h-dvh bg-bg text-fg">
+    <div data-theme="day" className="min-h-dvh bg-bg text-base text-fg">
       <header className="sticky top-0 z-20 flex items-center justify-between border-b border-border bg-surface/90 px-4 py-3 backdrop-blur">
         <Link to="/app" className="flex items-center gap-2">
           <Mark className="size-7" />

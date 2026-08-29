@@ -132,7 +132,7 @@ export function DayBoard({ venueId, date }: { venueId: string; date: string }) {
                         type="button"
                         onClick={() => setActive(b)}
                         className={cn(
-                          "mb-1 w-full rounded-md px-2 py-1.5 text-left text-xs",
+                          "slot-press mb-1 w-full rounded-md px-2 py-1.5 text-left text-xs",
                           b.state === "requested" && "bg-warn/15 text-warn",
                           b.state === "confirmed" && "bg-accent/15 text-accent-2",
                           b.state === "checked_in" && "bg-accent text-accent-fg",
@@ -159,7 +159,10 @@ export function DayBoard({ venueId, date }: { venueId: string; date: string }) {
                       <button
                         type="button"
                         onClick={() => setCreating({ resource: r, hour: h })}
-                        className="h-11 w-full rounded-md text-faint hover:bg-surface-3 hover:text-muted"
+                        className={cn(
+                          "slot-press h-11 w-full rounded-md text-faint hover:bg-surface-3 hover:text-muted",
+                          creating?.resource.id === r.id && creating.hour === h && "ring-2 ring-accent",
+                        )}
                         aria-label={`Add booking ${r.name} ${h}:00`}
                       >
                         +
