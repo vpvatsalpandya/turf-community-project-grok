@@ -128,6 +128,26 @@
   font-variant-numeric: tabular-nums;
 }
 
+@keyframes sheet-up {
+  from {
+    transform: translateY(100%);
+  }
+  to {
+    transform: translateY(0);
+  }
+}
+
+.sheet-up {
+  animation: sheet-up 220ms ease-out both;
+}
+
+.slot-press {
+  transition: transform 80ms ease-out;
+}
+.slot-press:active {
+  transform: scale(0.97);
+}
+
 @media print {
   header,
   nav,
@@ -150,4 +170,3 @@
     background: #fff !important;
   }
 }
-

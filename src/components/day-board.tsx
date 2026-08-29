@@ -12,7 +12,7 @@ import {
 } from "@/lib/server/desk-fns";
 import { getShareMessage } from "@/lib/server/desk-fns";
 import { formatInr } from "@/lib/turf/money";
-import { durationLabel, formatTime, zonedInstant } from "@/lib/turf/time";
+import { formatTime, zonedInstant } from "@/lib/turf/time";
 import type { BookingRow, ResourceRow, WaitlistRow } from "@/lib/turf/types";
 import { cn } from "@/lib/utils";
 import { ShareBox } from "./share-box";
@@ -32,6 +32,38 @@ function hourInIst(iso: string): number {
       hourCycle: "h23",
     }).format(new Date(iso)),
   );
+}
+
+const PAY_MODE_LABEL: Record<string, string> = {
+  upi_offline: "UPI",
+  cash: "Cash",
+  bank: "Bank",
+  other: "Other",
+};
+
+function knownCustomerLine(filled: {
+  name: string;
+  totalBookings: number;
+  loyaltyCreditPaise: number;
+}): string {
+  let line = `${filled.name} · ${filled.totalBookings} visits`;
+  if (filled.loyaltyCreditPaise > 0) {
+    line += ` · ${formatInr(filled.loyaltyCreditPaise)} credit`;
+  }
+  return line;
+}
+
+function hourRangeLabel(hour: number): string {
+  const end = hour + 1;
+  const to12 = (h: number) => {
+    const n = h % 12;
+    return n === 0 ? 12 : n;
+  };
+  const suffix = (h: number) => (h % 24 >= 12 ? "pm" : "am");
+  if (suffix(hour) === suffix(end) || end === 12) {
+    return `${to12(hour)}–${to12(end)}${suffix(end)}`;
+  }
+  return `${to12(hour)}${suffix(hour)}–${to12(end)}${suffix(end)}`;
 }
 
 export function DayBoard({ venueId, date }: { venueId: string; date: string }) {
@@ -100,7 +132,7 @@ export function DayBoard({ venueId, date }: { venueId: string; date: string }) {
                         type="button"
                         onClick={() => setActive(b)}
                         className={cn(
-                          "mb-1 w-full rounded-md px-2 py-1.5 text-left text-xs",
+                          "slot-press mb-1 w-full rounded-md px-2 py-1.5 text-left text-xs",
                           b.state === "requested" && "bg-warn/15 text-warn",
                           b.state === "confirmed" && "bg-accent/15 text-accent-2",
                           b.state === "checked_in" && "bg-accent text-accent-fg",
@@ -109,23 +141,28 @@ export function DayBoard({ venueId, date }: { venueId: string; date: string }) {
                           noshowIds.includes(b.id) && "ring-1 ring-danger",
                         )}
                       >
-                        <span className="block truncate font-medium">{b.customerName ?? "Walk-in"}</span>
+                        <span className="block truncate font-medium">
+                          {b.customerName ?? "Walk-in"}
+                        </span>
                         <span className="tabular opacity-80">{formatInr(b.amountDuePaise)}</span>
                       </button>
                     ))}
                     {blocked && (
-                      <div className="rounded-md bg-surface-3 px-2 py-1.5 text-[11px] text-muted">Blocked</div>
+                      <div className="rounded-md bg-surface-3 px-2 py-1.5 text-[11px] text-muted">
+                        Blocked
+                      </div>
                     )}
                     {waiting.length > 0 && (
-                      <p className="px-1 text-[11px] text-muted">
-                        {waiting.length} waiting
-                      </p>
+                      <p className="px-1 text-[11px] text-muted">{waiting.length} waiting</p>
                     )}
                     {!hits.length && !blocked && (
                       <button
                         type="button"
                         onClick={() => setCreating({ resource: r, hour: h })}
-                        className="h-11 w-full rounded-md text-faint hover:bg-surface-3 hover:text-muted"
+                        className={cn(
+                          "slot-press h-11 w-full rounded-md text-faint hover:bg-surface-3 hover:text-muted",
+                          creating?.resource.id === r.id && creating.hour === h && "ring-2 ring-accent",
+                        )}
                         aria-label={`Add booking ${r.name} ${h}:00`}
                       >
                         +
@@ -236,7 +273,8 @@ function BookingSheet({
   return (
     <Sheet onClose={onClose} title={booking.refCode}>
       <p className="text-sm text-muted">
-        {booking.resourceName} · {formatTime(new Date(booking.periodStart))} – {formatTime(new Date(booking.periodEnd))}
+        {booking.resourceName} · {formatTime(new Date(booking.periodStart))} –{" "}
+        {formatTime(new Date(booking.periodEnd))}
       </p>
       <p className="mt-1 font-medium">
         {booking.customerName}{" "}
@@ -248,11 +286,14 @@ function BookingSheet({
       </p>
       <div className="mt-2 flex flex-wrap gap-2">
         <Badge>{booking.state.replace("_", " ")}</Badge>
-        {booking.reliability && <Badge tone={badgeTone(booking.reliability)}>{booking.reliability}</Badge>}
+        {booking.reliability && (
+          <Badge tone={badgeTone(booking.reliability)}>{booking.reliability}</Badge>
+        )}
         {flagged && <Badge tone="bad">No-show candidate</Badge>}
       </div>
       <p className="mt-3 tabular text-sm">
-        Due {formatInr(booking.amountDuePaise)} · collected {formatInr(booking.amountCollectedPaise)}
+        Due {formatInr(booking.amountDuePaise)} · collected{" "}
+        {formatInr(booking.amountCollectedPaise)}
       </p>
       <div className="mt-4 grid grid-cols-2 gap-2">
         {booking.state === "confirmed" && (
@@ -285,18 +326,27 @@ function BookingSheet({
           </Button>
         )}
       </div>
-      {msg && <div className="mt-4"><ShareBox text={msg} /></div>}
+      {msg && (
+        <div className="mt-4">
+          <ShareBox text={msg} />
+        </div>
+      )}
       {freed.length > 0 && (
         <div className="mt-4 rounded-xl bg-surface-2 p-3">
           <p className="text-sm font-medium">Waiting for this hour</p>
           <ul className="mt-2 space-y-1 text-sm">
             {freed.map((w) => (
               <li key={w.id}>
-                {w.name} · <a href={`tel:${w.phone}`} className="text-accent-2">{w.phone}</a>
+                {w.name} ·{" "}
+                <a href={`tel:${w.phone}`} className="text-accent-2">
+                  {w.phone}
+                </a>
               </li>
             ))}
           </ul>
-          <p className="mt-2 text-xs text-muted">Copy the waitlist message from More → Waitlist and send it.</p>
+          <p className="mt-2 text-xs text-muted">
+            Copy the waitlist message from More → Waitlist and send it.
+          </p>
         </div>
       )}
       {(booking.state === "confirmed" || booking.state === "checked_in") && (
@@ -313,8 +363,19 @@ function BookingSheet({
               {waiters.map((w) => w.name).join(", ")} already waiting.
             </p>
           )}
-          <Input placeholder="Phone" inputMode="tel" value={wlPhone} onChange={(e) => setWlPhone(e.target.value)} required />
-          <Input placeholder="Name" value={wlName} onChange={(e) => setWlName(e.target.value)} required />
+          <Input
+            placeholder="Phone"
+            inputMode="tel"
+            value={wlPhone}
+            onChange={(e) => setWlPhone(e.target.value)}
+            required
+          />
+          <Input
+            placeholder="Name"
+            value={wlName}
+            onChange={(e) => setWlName(e.target.value)}
+            required
+          />
           <Button type="submit" variant="secondary" className="w-full" disabled={addWl.isPending}>
             Wait for this slot
           </Button>
@@ -340,10 +401,7 @@ function QuickEntry({
   onSaved: () => void;
 }) {
   const start = zonedInstant(date, `${String(hour).padStart(2, "0")}:00`);
-  const end = zonedInstant(
-    hour >= 23 ? date : date,
-    `${String(hour + 1).padStart(2, "0")}:00`,
-  );
+  const end = zonedInstant(hour >= 23 ? date : date, `${String(hour + 1).padStart(2, "0")}:00`);
   const [phone, setPhone] = useState("");
   const [name, setName] = useState("");
   const [amount, setAmount] = useState("");
@@ -351,12 +409,18 @@ function QuickEntry({
   const [note, setNote] = useState("");
   const [reason, setReason] = useState("Rain");
   const [tab, setTab] = useState<"book" | "block" | "wait">("book");
+  const [moneyOpen, setMoneyOpen] = useState(false);
 
   const priceQ = useQuery({
     queryKey: ["price", resource.id, start.toISOString()],
     queryFn: () =>
       lookupPrice({
-        data: { venueId, resourceId: resource.id, startISO: start.toISOString(), endISO: end.toISOString() },
+        data: {
+          venueId,
+          resourceId: resource.id,
+          startISO: start.toISOString(),
+          endISO: end.toISOString(),
+        },
       }),
   });
   const custQ = useQuery({
@@ -367,6 +431,8 @@ function QuickEntry({
 
   const filled = custQ.data?.identity;
   const price = priceQ.data?.pricePaise ?? 0;
+  const duePaise = amount ? Math.round(Number(amount) * 100) : price;
+  const moneyLine = `${formatInr(duePaise)} · ${PAY_MODE_LABEL[mode] ?? "UPI"} · ${hourRangeLabel(hour)} · confirmed abhi`;
 
   const save = useMutation({
     mutationFn: () =>
@@ -386,10 +452,9 @@ function QuickEntry({
           applyLoyalty: Boolean(filled?.loyaltyCreditPaise),
         },
       }),
-    onSuccess: (r) => {
+    onSuccess: () => {
       toast.success("Booked");
       onSaved();
-      if (r.message) toast.message("Share text ready");
     },
     onError: (e: Error) => toast.error(e.message),
   });
@@ -431,17 +496,6 @@ function QuickEntry({
 
   return (
     <Sheet onClose={onClose} title={`${resource.name} · ${formatTime(start)}`}>
-      <div className="mb-3 flex gap-2">
-        <Button size="sm" variant={tab === "book" ? "primary" : "secondary"} onClick={() => setTab("book")}>
-          Book
-        </Button>
-        <Button size="sm" variant={tab === "wait" ? "primary" : "secondary"} onClick={() => setTab("wait")}>
-          Wait
-        </Button>
-        <Button size="sm" variant={tab === "block" ? "primary" : "secondary"} onClick={() => setTab("block")}>
-          Block
-        </Button>
-      </div>
       {tab === "block" ? (
         <form
           className="space-y-3"
@@ -450,10 +504,21 @@ function QuickEntry({
             block.mutate();
           }}
         >
-          <Input value={reason} onChange={(e) => setReason(e.target.value)} placeholder="Rain, maintenance, tournament" />
+          <Input
+            value={reason}
+            onChange={(e) => setReason(e.target.value)}
+            placeholder="Rain, maintenance, tournament"
+          />
           <Button type="submit" className="w-full" disabled={block.isPending}>
             Block this hour
           </Button>
+          <button
+            type="button"
+            className="w-full text-sm text-muted"
+            onClick={() => setTab("book")}
+          >
+            Back
+          </button>
         </form>
       ) : tab === "wait" ? (
         <form
@@ -463,24 +528,32 @@ function QuickEntry({
             wait.mutate();
           }}
         >
-          <p className="text-sm text-muted">They get this hour if the confirmed booking cancels. You send the message yourself.</p>
+          <p className="text-sm text-muted">
+            They get this hour if the confirmed booking cancels. You send the message yourself.
+          </p>
           <Input
             placeholder="Phone first"
+            type="tel"
             inputMode="tel"
             value={phone}
             onChange={(e) => setPhone(e.target.value)}
             required
-            autoFocus
           />
           <Input
             placeholder="Name"
             value={name || filled?.name || ""}
             onChange={(e) => setName(e.target.value)}
-            required
           />
           <Button type="submit" className="w-full" disabled={wait.isPending}>
             {wait.isPending ? "Saving…" : "Add to waitlist"}
           </Button>
+          <button
+            type="button"
+            className="w-full text-sm text-muted"
+            onClick={() => setTab("book")}
+          >
+            Back
+          </button>
         </form>
       ) : (
         <form
@@ -492,52 +565,80 @@ function QuickEntry({
         >
           <Input
             placeholder="Phone first"
+            type="tel"
             inputMode="tel"
             value={phone}
             onChange={(e) => setPhone(e.target.value)}
             required
             autoFocus
           />
-          {filled && (
-            <p className="text-xs text-muted">
-              {filled.name} · {filled.totalBookings} visits · {formatInr(filled.totalSpendPaise)}
-              {filled.loyaltyCreditPaise > 0 ? ` · ${formatInr(filled.loyaltyCreditPaise)} credit` : ""}
-            </p>
-          )}
+          {filled && <p className="text-xs text-muted">{knownCustomerLine(filled)}</p>}
           <Input
             placeholder="Name"
             value={name || filled?.name || ""}
             onChange={(e) => setName(e.target.value)}
-            required
           />
-          <Input
-            placeholder={price ? `Amount (₹${Math.round(price / 100)})` : "Amount ₹"}
-            inputMode="numeric"
-            value={amount}
-            onChange={(e) => setAmount(e.target.value)}
-          />
-          <select
-            className="h-11 w-full rounded-lg bg-surface-2 px-3 text-sm shadow-[var(--shadow-border)]"
-            value={mode}
-            onChange={(e) => setMode(e.target.value)}
+          <p className="text-xs text-muted">{moneyLine}</p>
+          <button
+            type="button"
+            className="text-sm text-muted"
+            aria-expanded={moneyOpen}
+            onClick={() => setMoneyOpen((open) => !open)}
           >
-            <option value="upi_offline">UPI</option>
-            <option value="cash">Cash</option>
-            <option value="bank">Bank</option>
-            <option value="other">Other</option>
-          </select>
-          <Textarea placeholder="UPI ref / note" value={note} onChange={(e) => setNote(e.target.value)} className="min-h-20" />
-          <p className="text-xs text-muted">{durationLabel(start, end)} · lands as confirmed, no request step</p>
+            Money
+          </button>
+          {moneyOpen && (
+            <>
+              <Input
+                placeholder={price ? `Amount (₹${Math.round(price / 100)})` : "Amount ₹"}
+                inputMode="numeric"
+                value={amount}
+                onChange={(e) => setAmount(e.target.value)}
+              />
+              <select
+                className="h-11 w-full rounded-lg bg-surface-2 px-3 text-sm shadow-[var(--shadow-border)]"
+                value={mode}
+                onChange={(e) => setMode(e.target.value)}
+              >
+                <option value="upi_offline">UPI</option>
+                <option value="cash">Cash</option>
+                <option value="bank">Bank</option>
+                <option value="other">Other</option>
+              </select>
+              <Textarea
+                placeholder="UPI ref / note"
+                value={note}
+                onChange={(e) => setNote(e.target.value)}
+                className="min-h-20"
+              />
+            </>
+          )}
           <Button type="submit" className="w-full" disabled={save.isPending}>
-            {save.isPending ? "Saving…" : "Save booking"}
+            {save.isPending ? "Saving…" : "Save"}
           </Button>
+          <div className="flex gap-4">
+            <button type="button" className="text-sm text-muted" onClick={() => setTab("wait")}>
+              Waitlist
+            </button>
+            <button type="button" className="text-sm text-muted" onClick={() => setTab("block")}>
+              Block hour
+            </button>
+          </div>
         </form>
       )}
     </Sheet>
   );
 }
 
-function Sheet({ title, onClose, children }: { title: string; onClose: () => void; children: React.ReactNode }) {
+function Sheet({
+  title,
+  onClose,
+  children,
+}: {
+  title: string;
+  onClose: () => void;
+  children: React.ReactNode;
+}) {
   return (
     <div className="fixed inset-0 z-40 flex items-end justify-center bg-fg/30 md:items-center">
       <div className="max-h-[90dvh] w-full max-w-md overflow-y-auto rounded-t-3xl bg-surface p-5 shadow-[var(--shadow-border)] md:rounded-3xl">
