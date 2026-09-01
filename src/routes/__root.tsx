@@ -17,6 +17,7 @@ export const Route = createRootRoute({
         content: "Booking desk for turf owners in India. Customers request a slot. You confirm after the UPI hits.",
       },
       { name: "theme-color", content: "#07110c" },
+      { name: "robots", content: "noindex, nofollow" },
       { name: "apple-mobile-web-app-title", content: APP_NAME },
       { name: "apple-mobile-web-app-capable", content: "yes" },
       { name: "mobile-web-app-capable", content: "yes" },

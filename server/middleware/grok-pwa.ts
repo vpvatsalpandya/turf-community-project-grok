@@ -21,6 +21,7 @@ import {
   createHeadInjector,
   isDocumentPath,
   isInstallQuery,
+  isVercelSystemHost,
   renderInstallPageHtml,
   renderWebManifest,
 } from "../../scripts/grok-pwa-shared.mjs";
@@ -99,13 +100,17 @@ export default async function grokPwaMiddleware(
   if (!isDocumentPath(path)) return next();
 
   const result = await next();
+  const host = requestHost(event);
+  // Own host (*.vercel.app): keep Turf Community PWA from public/manifest.
+  // Grok chrome still injects /__grok/manifest named Grok App — skip it here.
+  if (isVercelSystemHost(host)) return result;
   if (
     result instanceof Response &&
     result.body &&
     String(result.headers.get("content-type") ?? "").includes("text/html") &&
     !result.headers.get("content-encoding")
   ) {
-    return injectHeadStreaming(result, requestHost(event));
+    return injectHeadStreaming(result, host);
   }
   return result;
 }

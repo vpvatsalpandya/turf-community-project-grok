@@ -82,12 +82,17 @@ export function appNameFromHost(hostHeader) {
 }
 
 /** True for Vercel system domains. Envoy rewrites origin Host to these; they SSO-protect `/og.jpg`. */
-function isVercelSystemHost(host) {
+export function isVercelSystemHost(host) {
+  const h = String(host ?? "")
+    .split(",")[0]
+    .trim()
+    .split(":")[0]
+    .toLowerCase();
   return (
-    host === "vercel.app" ||
-    host.endsWith(".vercel.app") ||
-    host === "vercel.com" ||
-    host.endsWith(".vercel.com")
+    h === "vercel.app" ||
+    h.endsWith(".vercel.app") ||
+    h === "vercel.com" ||
+    h.endsWith(".vercel.com")
   );
 }
 
