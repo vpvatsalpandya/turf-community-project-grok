@@ -112,6 +112,9 @@ async function createPgliteSql(): Promise<Sql> {
   globalRef.__pgliteInstance__ ??= (async () => {
     const { PGlite } = await import("@electric-sql/pglite");
     const pg = new PGlite({
+      // Explicit memory FS — Vercel lambdas are read-only and a default
+      // `./pglite.data` open 500s the isolate (`ENOENT /var/task/pglite.data`).
+      dataDir: "memory://",
       parsers: {
         [OID_INT8]: Number,
         [OID_DATE]: identity,
@@ -233,6 +236,7 @@ if (typeof window === "undefined" && dbSource === "pglite") {
   globalBoot.__pgBootstrapPromise__ ??= ensureDbReady().catch((err) => {
     globalBoot.__pgBootstrapPromise__ = undefined;
     console.error("[db] PGLite bootstrap failed:", err);
-    throw err;
+    // Don't rethrow: an unhandled rejection kills the Vercel isolate after
+    // the HTML 200. The next getSql() retries because the promise is cleared.
   });
 }
