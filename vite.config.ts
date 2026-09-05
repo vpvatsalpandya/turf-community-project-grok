@@ -175,6 +175,10 @@ export default defineConfig(({ command, isPreview }) => ({
             // manifest + head-tag middleware). Nitro v3 defaults serverDir to
             // false, so removing this silently unwires /?install=1 on deploys.
             serverDir: "./server",
+            // Keep the TanStack Start SSR entry in one file. Nitro/Rolldown
+            // otherwise splits ssr.mjs + ssr2.mjs and re-exports a missing
+            // `ssr_exports` binding (nitrojs/nitro#4533) — live 500s.
+            inlineDynamicImports: true,
           }),
         ]
       : []),
