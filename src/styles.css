@@ -28,6 +28,8 @@
     -moz-osx-font-smoothing: grayscale;
     background: var(--color-bg);
     color: var(--color-fg);
+    padding-top: env(safe-area-inset-top, 0px);
+    padding-bottom: env(safe-area-inset-bottom, 0px);
   }
 
   body {
@@ -55,6 +57,28 @@
       animation-duration: 0.01ms !important;
       animation-iteration-count: 1 !important;
       transition-duration: 0.01ms !important;
+    }
+  }
+
+  @media print {
+    .no-print,
+    header,
+    nav {
+      display: none !important;
+    }
+    html,
+    body,
+    main {
+      background: #fff !important;
+      color: #111 !important;
+    }
+    .print-sheet,
+    .print-qr,
+    .print-sheet *,
+    .print-qr * {
+      background: #fff !important;
+      color: #111 !important;
+      box-shadow: none !important;
     }
   }
 }

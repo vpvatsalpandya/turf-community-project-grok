@@ -10,7 +10,8 @@ import {
   Sparkles,
 } from "lucide-react";
 import { PitchMark } from "@/components/mark";
-import { Button } from "@/components/ui/button";
+import { Button, ButtonLink, buttonVariants } from "@/components/ui/button";
+import { ScreenLoader } from "@/components/screen-loader";
 import { listCommunityVenues } from "@/lib/turf/server";
 import {
   mergeDirectory,
@@ -26,7 +27,7 @@ import {
   telHref,
   type LatLng,
 } from "@/lib/turf/geo";
-import { inr } from "@/lib/utils";
+import { cn, inr } from "@/lib/utils";
 
 export const Route = createFileRoute("/turfs")({ component: TurfsPage });
 
@@ -45,6 +46,7 @@ function TurfsPage() {
   const [from, setFrom] = useState<LatLng | null>(VADODARA_CENTRE);
   const [originLabel, setOriginLabel] = useState("City centre");
   const [locating, setLocating] = useState(false);
+  const [loading, setLoading] = useState(true);
   const [filter, setFilter] = useState<Filter>("all");
 
   useEffect(() => {
@@ -52,7 +54,8 @@ function TurfsPage() {
       .then(setLive)
       .catch(() => {
         toast.error("Could not load Turf Community grounds");
-      });
+      })
+      .finally(() => setLoading(false));
   }, []);
   const rows = useMemo(() => mergeDirectory(live, from), [live, from]);
 
@@ -107,9 +110,13 @@ function TurfsPage() {
           Every ground, by distance.
         </h1>
         <p className="text-sm leading-relaxed text-muted">
-          {rows.length} football, box-cricket and pickleball grounds from public listings.{" "}
-          <span className="text-accent">{onCount} on Turf Community</span> — book those here.
-          The rest you can call or visit.
+          {loading ? "Loading grounds…" : `${rows.length} football, box-cricket and pickleball grounds from public listings. `}
+          {loading ? null : (
+            <>
+              <span className="text-accent">{onCount} on Turf Community</span> — book those here.
+              The rest you can call or visit.
+            </>
+          )}
         </p>
       </section>
 
@@ -158,27 +165,24 @@ function TurfsPage() {
             aria-label={`${label}, ${filterCounts[id]} grounds`}
             aria-pressed={filter === id}
           >
-            {label} {filterCounts[id]}
+            {label} {loading ? "" : filterCounts[id]}
           </button>
         ))}
       </div>
 
-      <ul className="mt-4 space-y-3 px-4">
-        {visible.length === 0 ? (
-          <li className="rounded-lg bg-surface p-4 text-sm text-muted">
-            No grounds in this filter. Try All, or pick another sport.
-          </li>
-        ) : (
-          visible.map((row) => <TurfCard key={row.id} row={row} />)
-        )}
-      </ul>
-
-      <p className="px-4 pt-8 text-xs leading-relaxed text-faint">
-        Directory compiled August 2026 from TurfBooking, Hudle, Justdial, CricketGround,
-        KheloMore, Playo and venue pages. Football turfs, box cricket and pickleball courts.
-        Hours and rates change. Not every ground in the district is listed — owners can add
-        theirs from the desk.
-      </p>
+      {loading ? (
+        <ScreenLoader label="Loading grounds…" />
+      ) : (
+        <ul className="mt-4 space-y-3 px-4">
+          {visible.length === 0 ? (
+            <li className="rounded-lg bg-surface p-4 text-sm text-muted">
+              No grounds in this filter. Try All, or pick another sport.
+            </li>
+          ) : (
+            visible.map((row) => <TurfCard key={row.id} row={row} />)
+          )}
+        </ul>
+      )}
     </main>
   );
 }
@@ -196,63 +200,70 @@ function TurfCard({ row }: { row: ListedTurf }) {
           : "bg-surface shadow-[0_0_0_1px_rgba(232,242,235,0.08)]"
       }`}
     >
-      <div className="flex items-start justify-between gap-3">
-        <div className="min-w-0">
-          <div className="flex flex-wrap items-center gap-2">
-            <h2 className="font-display text-2xl tracking-tight uppercase">{row.name}</h2>
-            {row.onCommunity ? (
-              <span className="inline-flex items-center gap-1 rounded-full bg-accent px-2 py-0.5 text-xs font-medium text-accent-fg">
-                <Sparkles className="size-3" />
-                On Turf Community
-              </span>
-            ) : null}
+      <Link to="/g/$id" params={{ id: row.id }} className="block">
+        <div className="flex items-start justify-between gap-3">
+          <div className="min-w-0">
+            <div className="flex flex-wrap items-center gap-2">
+              <h2 className="font-display text-2xl tracking-tight uppercase">{row.name}</h2>
+              {row.onCommunity ? (
+                <span className="inline-flex items-center gap-1 rounded-full bg-accent px-2 py-0.5 text-xs font-medium text-accent-fg">
+                  <Sparkles className="size-3" />
+                  On Turf Community
+                </span>
+              ) : null}
+            </div>
+            <p className="mt-1 flex items-center gap-1 text-xs text-muted">
+              <MapPin className="size-3 shrink-0" />
+              {row.area}
+              {row.km != null ? ` · ${formatKm(row.km)}` : null}
+            </p>
           </div>
-          <p className="mt-1 flex items-center gap-1 text-xs text-muted">
-            <MapPin className="size-3 shrink-0" />
-            {row.area}
-            {row.km != null ? ` · ${formatKm(row.km)}` : null}
-          </p>
         </div>
-      </div>
-      <p className="mt-2 text-sm leading-relaxed text-muted">{row.address}</p>
-      <p className="mt-1 text-xs text-faint">
-        {row.sports.join(" · ")}
-        {row.hours ? ` · ${row.hours}` : ""}
-        {row.livePrice ? ` · from ${inr(row.livePrice)}/hr` : ""}
-      </p>
-      {row.notes ? <p className="mt-2 text-sm leading-relaxed text-fg/90">{row.notes}</p> : null}
+        <p className="mt-2 text-sm leading-relaxed text-muted">{row.address}</p>
+        <p className="mt-1 text-xs text-faint">
+          {row.sports.join(" · ")}
+          {row.hours ? ` · ${row.hours}` : ""}
+          {row.livePrice ? ` · from ${inr(row.livePrice)}/hr` : ""}
+        </p>
+        {row.notes ? <p className="mt-2 text-sm leading-relaxed text-fg/90">{row.notes}</p> : null}
+      </Link>
 
       <div className="mt-3 flex flex-col gap-2">
         {row.onCommunity && row.slug ? (
-          <Link to="/b/$slug" params={{ slug: row.slug }} className="block">
-            <Button className="w-full">
-              Book a slot
-              <ArrowRight className="size-4" />
-            </Button>
+          <Link
+            to="/b/$slug"
+            params={{ slug: row.slug }}
+            className={cn(buttonVariants({ variant: "primary" }), "w-full")}
+          >
+            Book a slot
+            <ArrowRight className="size-4" />
           </Link>
         ) : (
-          <p className="text-xs text-faint">Not on Turf Community yet — call or visit the gate.</p>
+          <Link
+            to="/g/$id"
+            params={{ id: row.id }}
+            className={cn(buttonVariants({ variant: "primary" }), "w-full")}
+          >
+            Open ground
+            <ArrowRight className="size-4" />
+          </Link>
         )}
         <div className="grid grid-cols-2 gap-2">
           {call ? (
-            <a href={call}>
-              <Button variant="secondary" className="w-full">
-                <Phone className="size-4" />
-                Call
-              </Button>
-            </a>
+            <ButtonLink href={call} variant="secondary" className="w-full">
+              <Phone className="size-4" />
+              Call
+            </ButtonLink>
           ) : (
             <Button variant="secondary" className="w-full" disabled>
               <Phone className="size-4" />
               No number
             </Button>
           )}
-          <a href={visit} target="_blank" rel="noreferrer">
-            <Button variant="secondary" className="w-full">
-              <Navigation className="size-4" />
-              Visit
-            </Button>
-          </a>
+          <ButtonLink href={visit} target="_blank" rel="noreferrer" variant="secondary" className="w-full">
+            <Navigation className="size-4" />
+            Visit
+          </ButtonLink>
         </div>
       </div>
     </li>

@@ -3,6 +3,7 @@ import { useEffect, useState } from "react";
 import { ArrowRight, MapPin } from "lucide-react";
 import { PitchMark } from "@/components/mark";
 import { Button } from "@/components/ui/button";
+import { ScreenLoader } from "@/components/screen-loader";
 import { RedirectToSignIn, UserButton } from "@/lib/auth/gates";
 import { useCurrentUserState } from "@/lib/auth/use-current-user";
 import { getMyProfile, listPlayerNights, type PlayerBooking } from "@/lib/turf/server";
@@ -44,9 +45,20 @@ function PlayPage() {
   }, [isPending, user, navigate]);
 
   if (isPending) {
-    return <main className="grid min-h-dvh place-items-center bg-bg text-muted">Loading…</main>;
+    return (
+      <main className="min-h-dvh bg-bg">
+        <ScreenLoader label="Opening your night…" />
+      </main>
+    );
   }
   if (!user) return <RedirectToSignIn />;
+  if (bookings === null) {
+    return (
+      <main className="min-h-dvh bg-bg">
+        <ScreenLoader label="Loading your slots…" />
+      </main>
+    );
+  }
 
   return (
     <main className="mx-auto min-h-dvh max-w-lg bg-bg pb-16">
@@ -64,8 +76,7 @@ function PlayPage() {
       <section className="space-y-3 px-4">
         <h1 className="font-display text-4xl tracking-tight uppercase">Your slots.</h1>
         <p className="text-sm leading-relaxed text-muted">
-          Players do not need an account to request a slot. This desk is so you can
-          see what you already asked for.
+          Sign in keeps your requests on this phone. You can still book a slot as a guest.
         </p>
         <div className="flex flex-col gap-2 sm:flex-row">
           <Link to="/turfs" className="block flex-1">
@@ -83,9 +94,7 @@ function PlayPage() {
       </section>
 
       <ul className="mt-6 space-y-3 px-4">
-        {bookings === null ? (
-          <li className="h-28 animate-pulse rounded-lg bg-surface" />
-        ) : bookings.length === 0 ? (
+        {bookings.length === 0 ? (
           <li className="rounded-lg bg-surface p-4 text-sm text-muted">
             No requests yet. Pick a turf and send a slot.
           </li>
@@ -127,15 +136,15 @@ function RequestCard({ row }: { row: PlayerBooking }) {
 
 function StatusPill({ status }: { status: string }) {
   const label =
-    status === "pending"
+    status === "pending" || status === "requested"
       ? "Waiting on desk"
       : status === "confirmed"
         ? "Confirmed"
         : status === "checked_in"
           ? "In"
-          : status === "checked_out"
+          : status === "checked_out" || status === "completed"
             ? "Out"
           : status;
-  const accent = status === "pending" ? "text-warn" : "text-accent";
+  const accent = status === "pending" || status === "requested" ? "text-warn" : "text-accent";
   return <span className={`text-xs font-medium uppercase ${accent}`}>{label}</span>;
 }

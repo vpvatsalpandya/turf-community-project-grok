@@ -27,7 +27,7 @@ export type PlayerBooking = {
   notes: string;
 };
 
-export async function ensureOwnerProfile(userId: string) {
+export async function ensureProfile(userId: string, role: "player" | "owner" = "player") {
   const sql = await getSql();
   const rows = await sql<{ user_id: string }>`
     select user_id from profiles where user_id = ${userId} limit 1
@@ -37,13 +37,54 @@ export async function ensureOwnerProfile(userId: string) {
     `select name, email from "user" where id = $1 limit 1`,
     [userId],
   );
-  const name = user[0]?.name?.trim() || "Owner";
+  const name = user[0]?.name?.trim() || (role === "owner" ? "Owner" : "Player");
   await sql`
     insert into profiles (user_id, role, display_name)
-    values (${userId}, 'owner', ${name})
+    values (${userId}, ${role}, ${name})
     on conflict (user_id) do nothing
   `;
 }
+
+/** Desk routes still call this; it only inserts if the user has no profile yet. */
+export async function ensureOwnerProfile(userId: string) {
+  await ensureProfile(userId, "owner");
+}
+
+export const claimSignupRole = createServerFn({ method: "POST" })
+  .middleware([authMiddleware])
+  .validator((input: { role: "player" | "owner" }) => input)
+  .handler(async ({ context, data }) => {
+    const role = data.role === "owner" ? "owner" : "player";
+    const sql = await getSql();
+    const existing = await sql<{ role: string; display_name: string }>`
+      select role, display_name from profiles where user_id = ${context.userId} limit 1
+    `;
+    const user = await sql.query<{ name: string }>(
+      `select name from "user" where id = $1 limit 1`,
+      [context.userId],
+    );
+    const name = existing[0]?.display_name || user[0]?.name?.trim() || (role === "owner" ? "Owner" : "Player");
+    const current = existing[0]?.role;
+    if (current === "staff" || current === "manager" || current === "admin") {
+      return { role: current };
+    }
+    if (!existing[0]) {
+      await sql`
+        insert into profiles (user_id, role, display_name)
+        values (${context.userId}, ${role}, ${name})
+        on conflict (user_id) do nothing
+      `;
+      return { role };
+    }
+    if (current === "player" && role === "owner") {
+      await sql`
+        update profiles set role = 'owner', display_name = ${name}
+        where user_id = ${context.userId}
+      `;
+      return { role: "owner" as const };
+    }
+    return { role: current || role };
+  });
 
 export const prepareDemoLogins = createServerFn({ method: "GET" }).handler(async () => {
   if (!demoAllowed()) return { ok: true as const, demo: false as const };
@@ -55,12 +96,12 @@ export const prepareDemoLogins = createServerFn({ method: "GET" }).handler(async
 export const getMyProfile = createServerFn({ method: "GET" })
   .middleware([authMiddleware])
   .handler(async ({ context }): Promise<Profile> => {
-    await ensureOwnerProfile(context.userId);
+    await ensureProfile(context.userId, "player");
     const sql = await getSql();
     const rows = await sql<{ role: string; display_name: string; venue_id: string | null }>`
       select role, display_name, venue_id from profiles where user_id = ${context.userId} limit 1
     `;
-    const role = (rows[0]?.role ?? "owner") as DemoRole;
+    const role = (rows[0]?.role ?? "player") as DemoRole;
     const user = await sql.query<{ email: string; name: string }>(
       `select email, name from "user" where id = $1 limit 1`,
       [context.userId],
@@ -161,7 +202,7 @@ export const listAdminBoard = createServerFn({ method: "GET" })
         and b.start_at < ${to.toISOString()}
       order by b.start_at asc
     `;
-    const pending = tonight.filter((b) => b.status === "pending").length;
+    const pending = tonight.filter((b) => b.status === "requested" || b.status === "pending").length;
     return {
       forbidden: false as const,
       role,

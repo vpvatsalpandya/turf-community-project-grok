@@ -1,4 +1,5 @@
 export type AcademyField = {
+  id?: string;
   field: string;
   required: "needed" | "should" | "optional";
   example: string;
@@ -39,60 +40,70 @@ export const ACCOUNT_FIELDS: AcademyField[] = [
 
 export const TURF_FIELDS: AcademyField[] = [
   {
+    id: "name",
     field: "Name",
     required: "needed",
     example: "Greenfield Arena",
     why: "Becomes the booking URL, like /b/greenfield-arena. At least 2 characters.",
   },
   {
+    id: "area",
     field: "Area",
     required: "should",
     example: "Alkapuri",
     why: "Printed on the public page and WhatsApp share text so players know which ground.",
   },
   {
+    id: "city",
     field: "City",
     required: "should",
     example: "Vadodara",
     why: "Defaults to Vadodara if left blank. Shown next to the turf name.",
   },
   {
+    id: "pitches",
     field: "Pitches",
     required: "should",
     example: "2",
     why: "1 to 6. Two people can hold the same hour only if you have two pitches.",
   },
   {
+    id: "price",
     field: "₹ per hour",
     required: "should",
     example: "900",
     why: "₹100–₹20,000. Amount on a request is price × slot length. Default ₹800.",
   },
   {
+    id: "slot",
     field: "Slot minutes",
     required: "should",
     example: "60, 90 or 120",
     why: "Only these three lengths. Anything else saves as 60 minutes.",
   },
   {
+    id: "hours",
     field: "Opens / Closes",
     required: "should",
-    example: "6 and 23",
-    why: "Hours in IST, 24-hour clock. 23 means last kick-off must finish by 11pm.",
+    example: "6 and 26",
+    why: "Hours in IST. 23 = last kick-off finishes by 11pm. 26 = 2am the next calendar day.",
   },
   {
+    id: "upi",
     field: "UPI id",
     required: "should",
     example: "greenfield@okaxis",
     why: "Shown after a player requests. No payment gateway. Leave blank only if they pay at the counter.",
   },
   {
+    id: "phone",
     field: "Gate phone",
     required: "should",
     example: "9876543210",
     why: "10-digit Indian mobile. Players call this if they are lost or the floodlights are off.",
   },
   {
+    id: "notes",
     field: "Notes on the public page",
     required: "optional",
     example: "Studs ok. Arrive 10 min early. Extra ball ₹50.",
@@ -116,7 +127,7 @@ export const MODULES: AcademyModule[] = [
     outcome: "You can explain the product to a gate boy in one sentence.",
     steps: [
       "Players do not create an account. They open your link, pick an IST hour, and send a request with name + 10-digit mobile.",
-      "The request holds the pitch as pending. Nobody else can take that hour on that pitch.",
+      "The request is requested, not a booking. The first request holds the pitch 20 minutes. Others can still request the same hour.",
       "They pay you on UPI, out of band. You open the desk, see the rupees, tap Confirm. Decline frees the slot.",
       "Walk-ins still exist. Empty slot → Walk-in → name + mobile → Confirm at gate.",
     ],
@@ -190,7 +201,7 @@ export const MODULES: AcademyModule[] = [
     ],
     check: {
       q: "Two requests for 9pm and you have one pitch. What happens?",
-      a: "The first request holds it as pending. The second player is told the slot just filled.",
+      a: "Both requests land. The first gets a 20-minute hold. Accept one after UPI — the rest drop as slot taken.",
     },
   },
   {
@@ -281,7 +292,7 @@ export const FAQS: AcademyFaq[] = [
   },
   {
     q: "Do I need a payment gateway, GSTIN, or KYC?",
-    a: "No. Phase 1 is UPI out of band. No Razorpay, no commission, no GSTIN field. You already collect turf fees on PhonePe/GPay today — keep doing that.",
+    a: "No. UPI is out of band. No Razorpay, no commission, no GSTIN field. You already collect turf fees on PhonePe/GPay today — keep doing that.",
   },
   {
     q: "Can two sides book the same 9pm?",
@@ -309,15 +320,15 @@ export const FAQS: AcademyFaq[] = [
   },
   {
     q: "How do walk-ins work?",
-    a: "Today → open slot → Walk-in → name + mobile → Confirm at gate. It is stored as confirmed, source walk-in. Phone can be skipped at the gate in a rush (stored as zeros) — still take a name.",
+    a: "Today → empty cell. Walk-in: phone first, name optional, confirm at the gate (stored as confirmed). Rain: block the hour — rain, lights, tournament. Wait: park a side if the hour is full. They get it only if you cancel a confirmed booking and send the waitlist text yourself.",
   },
   {
     q: "What does In and Out mean?",
     a: "In is check-in — the side walked onto the pitch. Out is check-out — they left. Use both so you know who is on the floodlights right now.",
   },
   {
-    q: "What are No-show and Cancel?",
-    a: "No-show: confirmed, they never arrived, the hour frees. Cancel: rain, lights, or a fight on a confirmed hour. Refund UPI yourself. Decline is only for a pending request that has not been confirmed.",
+    q: "What are They showed, No-show and Cancel?",
+    a: "No-show review lists confirmed hours that already ended. They showed: they played, you missed In at the fence — does not invent a check-in, the hour closes as completed. No-show: they never arrived, the hour frees. We never auto-mark no-show. Cancel: rain or a fight on a confirmed hour. Refund UPI yourself. Decline is only for a pending request.",
   },
   {
     q: "Do staff need the owner password?",
@@ -344,9 +355,9 @@ export const FAQS: AcademyFaq[] = [
 export const NIGHT_CARD = `TURF COMMUNITY — NIGHT CARD
 
 1. Player opens our booking link. They pick a time. They send name + mobile.
-2. That hour is HELD (pending). Do not sell it on WhatsApp.
+2. That hour is REQUESTED. The first request holds it 20 min. Others can still request.
 3. They pay UPI to the id on the turf page.
-4. Owner desk → Confirm if money landed. Decline if not. Decline frees the hour.
+4. Desk → Accept if money landed. The rest drop. Decline if not.
 5. At the gate: match name + time. Tap In. When they leave, tap Out.
 6. Confirmed and they ghost → No-show. Rain / lights → Cancel. Both free the hour.
 7. No request + slot open → Walk-in → name + mobile → Confirm at gate.

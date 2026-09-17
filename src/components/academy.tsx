@@ -1,7 +1,6 @@
 import { useEffect, useMemo, useState } from "react";
 import { toast } from "sonner";
 import {
-  BookOpen,
   Check,
   ChevronDown,
   ClipboardList,
@@ -40,7 +39,7 @@ function loadDone(): string[] {
   }
 }
 
-function FieldTable({ rows }: { rows: AcademyField[] }) {
+function FieldTable({ rows, onFillField }: { rows: AcademyField[]; onFillField?: (id: string) => void }) {
   return (
     <ul className="space-y-2">
       {rows.map((row) => (
@@ -62,13 +61,26 @@ function FieldTable({ rows }: { rows: AcademyField[] }) {
           </div>
           <p className="mt-1 text-xs text-muted">e.g. {row.example}</p>
           <p className="mt-1 text-sm leading-relaxed text-fg/90">{row.why}</p>
+          {row.id && onFillField ? (
+            <button
+              type="button"
+              className="mt-2 text-xs text-accent"
+              onClick={() => onFillField(row.id!)}
+            >
+              Fill on desk →
+            </button>
+          ) : row.id ? (
+            <a href="/desk" className="mt-2 inline-block text-xs text-accent" onClick={() => localStorage.setItem("turf-desk-focus", row.id!)}>
+              Fill on desk →
+            </a>
+          ) : null}
         </li>
       ))}
     </ul>
   );
 }
 
-export function Academy({ venue }: { venue?: Venue | null }) {
+export function Academy({ venue, onFillField }: { venue?: Venue | null; onFillField?: (id: string) => void }) {
   const [pane, setPane] = useState<Pane>("fill");
   const [openModule, setOpenModule] = useState<string | null>(MODULES[0]?.id ?? null);
   const [done, setDone] = useState<string[]>([]);
@@ -157,7 +169,7 @@ export function Academy({ venue }: { venue?: Venue | null }) {
               Desk → Turf. Name is the only hard stop. Fill the rest before you share the link.
             </p>
             <div className="mt-3">
-              <FieldTable rows={TURF_FIELDS} />
+              <FieldTable rows={TURF_FIELDS} onFillField={onFillField} />
             </div>
           </div>
           <div>
@@ -287,11 +299,6 @@ export function Academy({ venue }: { venue?: Venue | null }) {
           })}
         </section>
       ) : null}
-
-      <p className="flex items-center gap-2 pb-4 text-xs text-faint">
-        <BookOpen className="size-3.5" />
-        Phase 1 · one turf · UPI out of band · IST
-      </p>
     </div>
   );
 }

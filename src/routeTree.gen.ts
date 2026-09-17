@@ -18,7 +18,9 @@ import { Route as PlayRouteImport } from './routes/play'
 import { Route as PrivacyRouteImport } from './routes/privacy'
 import { Route as TermsRouteImport } from './routes/terms'
 import { Route as TurfsRouteImport } from './routes/turfs'
+import { Route as WelcomeRouteImport } from './routes/welcome'
 import { Route as BSlugRouteImport } from './routes/b.$slug'
+import { Route as GIdRouteImport } from './routes/g.$id'
 import { Route as ApiAuthSplatRouteImport } from './routes/api/auth/$'
 import { Route as ApiWaWebhookRouteImport } from './routes/api/wa/webhook'
 
@@ -67,9 +69,19 @@ const TurfsRoute = TurfsRouteImport.update({
   path: '/turfs',
   getParentRoute: () => rootRouteImport,
 } as any)
+const WelcomeRoute = WelcomeRouteImport.update({
+  id: '/welcome',
+  path: '/welcome',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const BSlugRoute = BSlugRouteImport.update({
   id: '/b/$slug',
   path: '/b/$slug',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const GIdRoute = GIdRouteImport.update({
+  id: '/g/$id',
+  path: '/g/$id',
   getParentRoute: () => rootRouteImport,
 } as any)
 const ApiAuthSplatRoute = ApiAuthSplatRouteImport.update({
@@ -93,7 +105,9 @@ export interface FileRoutesByFullPath {
   '/privacy': typeof PrivacyRoute
   '/terms': typeof TermsRoute
   '/turfs': typeof TurfsRoute
+  '/welcome': typeof WelcomeRoute
   '/b/$slug': typeof BSlugRoute
+  '/g/$id': typeof GIdRoute
   '/api/auth/$': typeof ApiAuthSplatRoute
   '/api/wa/webhook': typeof ApiWaWebhookRoute
 }
@@ -107,7 +121,9 @@ export interface FileRoutesByTo {
   '/privacy': typeof PrivacyRoute
   '/terms': typeof TermsRoute
   '/turfs': typeof TurfsRoute
+  '/welcome': typeof WelcomeRoute
   '/b/$slug': typeof BSlugRoute
+  '/g/$id': typeof GIdRoute
   '/api/auth/$': typeof ApiAuthSplatRoute
   '/api/wa/webhook': typeof ApiWaWebhookRoute
 }
@@ -122,7 +138,9 @@ export interface FileRoutesById {
   '/privacy': typeof PrivacyRoute
   '/terms': typeof TermsRoute
   '/turfs': typeof TurfsRoute
+  '/welcome': typeof WelcomeRoute
   '/b/$slug': typeof BSlugRoute
+  '/g/$id': typeof GIdRoute
   '/api/auth/$': typeof ApiAuthSplatRoute
   '/api/wa/webhook': typeof ApiWaWebhookRoute
 }
@@ -138,7 +156,9 @@ export interface FileRouteTypes {
     | '/privacy'
     | '/terms'
     | '/turfs'
+    | '/welcome'
     | '/b/$slug'
+    | '/g/$id'
     | '/api/auth/$'
     | '/api/wa/webhook'
   fileRoutesByTo: FileRoutesByTo
@@ -152,7 +172,9 @@ export interface FileRouteTypes {
     | '/privacy'
     | '/terms'
     | '/turfs'
+    | '/welcome'
     | '/b/$slug'
+    | '/g/$id'
     | '/api/auth/$'
     | '/api/wa/webhook'
   id:
@@ -166,7 +188,9 @@ export interface FileRouteTypes {
     | '/privacy'
     | '/terms'
     | '/turfs'
+    | '/welcome'
     | '/b/$slug'
+    | '/g/$id'
     | '/api/auth/$'
     | '/api/wa/webhook'
   fileRoutesById: FileRoutesById
@@ -181,7 +205,9 @@ export interface RootRouteChildren {
   PrivacyRoute: typeof PrivacyRoute
   TermsRoute: typeof TermsRoute
   TurfsRoute: typeof TurfsRoute
+  WelcomeRoute: typeof WelcomeRoute
   BSlugRoute: typeof BSlugRoute
+  GIdRoute: typeof GIdRoute
   ApiAuthSplatRoute: typeof ApiAuthSplatRoute
   ApiWaWebhookRoute: typeof ApiWaWebhookRoute
 }
@@ -251,11 +277,25 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof TurfsRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/welcome': {
+      id: '/welcome'
+      path: '/welcome'
+      fullPath: '/welcome'
+      preLoaderRoute: typeof WelcomeRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/b/$slug': {
       id: '/b/$slug'
       path: '/b/$slug'
       fullPath: '/b/$slug'
       preLoaderRoute: typeof BSlugRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/g/$id': {
+      id: '/g/$id'
+      path: '/g/$id'
+      fullPath: '/g/$id'
+      preLoaderRoute: typeof GIdRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/api/auth/$': {
@@ -285,7 +325,9 @@ const rootRouteChildren: RootRouteChildren = {
   PrivacyRoute: PrivacyRoute,
   TermsRoute: TermsRoute,
   TurfsRoute: TurfsRoute,
+  WelcomeRoute: WelcomeRoute,
   BSlugRoute: BSlugRoute,
+  GIdRoute: GIdRoute,
   ApiAuthSplatRoute: ApiAuthSplatRoute,
   ApiWaWebhookRoute: ApiWaWebhookRoute,
 }

@@ -130,27 +130,91 @@ async function seedPlayerHold(venueId: string, _ownerId: string) {
   if (start.getTime() <= Date.now()) start = istDateTime(addDays(todayIst(), 1), 21, 0);
   const end = new Date(start.getTime() + 60 * 60_000);
   const holdUntil = new Date(Date.now() + HOLD_MINUTES * 60_000).toISOString();
+  const { ensureResources } = await import("./engine");
+  await ensureResources(sql, venueId, 2);
   if (existing[0]) {
     await sql`
       update bookings set
         customer_user_id = ${playerId},
         hold_until = ${holdUntil}
       where id = 'seed-player-request'
-        and status = 'pending'
+        and status = 'requested'
     `;
     return;
   }
   await sql`
     insert into bookings (
-      id, venue_id, pitch_index, start_at, end_at, status, source,
-      customer_name, customer_phone, notes, amount_inr, customer_user_id, hold_until
+      id, venue_id, resource_id, pitch_index, start_at, end_at, blocked_end, status, source,
+      customer_name, customer_phone, notes, amount_inr, amount_paise, customer_user_id, hold_until
     ) values (
-      'seed-player-request', ${venueId}, 2, ${start.toISOString()}, ${end.toISOString()},
-      'pending', 'link', ${player.name}, '9876501234',
-      'UPI sent — waiting on the desk', 900, ${playerId}, ${holdUntil}
+      'seed-player-request', ${venueId}, ${`${venueId}:p2`}, 2, ${start.toISOString()}, ${end.toISOString()}, ${end.toISOString()},
+      'requested', 'link', ${player.name}, '9876501234',
+      'UPI sent — waiting on the desk', 900, 90000, ${playerId}, ${holdUntil}
     )
     on conflict (id) do nothing
   `;
+  await sql`
+    insert into slot_holds (id, venue_id, resource_id, booking_id, start_at, end_at, expires_at)
+    values (
+      'hold-seed-player-request', ${venueId}, ${`${venueId}:p2`}, 'seed-player-request',
+      ${start.toISOString()}, ${end.toISOString()}, ${holdUntil}
+    )
+    on conflict (venue_id, resource_id, start_at) do nothing
+  `;
+  await seedDeskHistory(sql, venueId, start, end);
+}
+
+async function seedDeskHistory(
+  sql: Awaited<ReturnType<typeof getSql>>,
+  venueId: string,
+  waitStart: Date,
+  waitEnd: Date,
+) {
+  await sql`
+    insert into waitlist (
+      id, venue_id, resource_id, start_at, end_at, customer_name, customer_phone, status
+    ) values (
+      'seed-wait-kiran', ${venueId}, ${`${venueId}:p2`}, ${waitStart.toISOString()}, ${waitEnd.toISOString()},
+      'Kiran Mehta', '9876505555', 'waiting'
+    )
+    on conflict (id) do nothing
+  `;
+  await sql`
+    insert into customers (id, venue_id, phone, name, visits, last_seen_at)
+    values
+      ('seed-c-ravi', ${venueId}, '9876543210', 'Ravi Patel', 6, now()),
+      ('seed-c-kiran', ${venueId}, '9876505555', 'Kiran Mehta', 2, now()),
+      ('seed-c-dup', ${venueId}, '9876505556', 'Kiran', 1, now())
+    on conflict (venue_id, phone) do nothing
+  `;
+  const hours = [18, 19, 20, 21];
+  const daysBack = [2, 3, 5, 7, 9, 10, 12, 14];
+  let n = 0;
+  for (const back of daysBack) {
+    const date = addDays(todayIst(), -back);
+    const hour = hours[n % hours.length];
+    const pitch = (n % 2) + 1;
+    const start = istDateTime(date, hour, 0);
+    const end = new Date(start.getTime() + 60 * 60_000);
+    const status = n === 3 ? "no_show" : "completed";
+    const mode = n % 2 === 0 ? "upi" : "cash";
+    const name = n % 2 === 0 ? "Ravi Patel" : "Kiran Mehta";
+    const phone = n % 2 === 0 ? "9876543210" : "9876505555";
+    await sql`
+      insert into bookings (
+        id, venue_id, resource_id, pitch_index, start_at, end_at, blocked_end, status, source,
+        customer_name, customer_phone, amount_inr, amount_paise, payment_mode, checked_in_at, checked_out_at
+      ) values (
+        ${`seed-hist-${n}`}, ${venueId}, ${`${venueId}:p${pitch}`}, ${pitch},
+        ${start.toISOString()}, ${end.toISOString()}, ${end.toISOString()}, ${status}, 'walkin',
+        ${name}, ${phone}, 900, 90000, ${mode},
+        ${status === "completed" ? start.toISOString() : null},
+        ${status === "completed" ? end.toISOString() : null}
+      )
+      on conflict (id) do nothing
+    `;
+    n += 1;
+  }
 }
 
 export async function ensureOwnerProfile(userId: string) {
@@ -163,10 +227,10 @@ export async function ensureOwnerProfile(userId: string) {
     `select name, email from "user" where id = $1 limit 1`,
     [userId],
   );
-  const name = user[0]?.name?.trim() || "Owner";
+  const name = user[0]?.name?.trim() || "Player";
   await sql`
     insert into profiles (user_id, role, display_name)
-    values (${userId}, 'owner', ${name})
+    values (${userId}, 'player', ${name})
     on conflict (user_id) do nothing
   `;
 }
@@ -185,7 +249,7 @@ export const getMyProfile = createServerFn({ method: "GET" })
     const rows = await sql<{ role: string; display_name: string; venue_id: string | null }>`
       select role, display_name, venue_id from profiles where user_id = ${context.userId} limit 1
     `;
-    const role = (rows[0]?.role ?? "owner") as DemoRole;
+    const role = (rows[0]?.role ?? "player") as DemoRole;
     const user = await sql.query<{ email: string; name: string }>(
       `select email, name from "user" where id = $1 limit 1`,
       [context.userId],
@@ -298,7 +362,7 @@ export const listAdminBoard = createServerFn({ method: "GET" })
         and b.start_at < ${to.toISOString()}
       order by b.start_at asc
     `;
-    const pending = tonight.filter((b) => b.status === "pending").length;
+    const pending = tonight.filter((b) => b.status === "requested" || b.status === "pending").length;
     return {
       forbidden: false as const,
       role,

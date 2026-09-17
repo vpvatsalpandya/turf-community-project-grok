@@ -1,8 +1,8 @@
 import { cva, type VariantProps } from "class-variance-authority";
-import { type ButtonHTMLAttributes } from "react";
+import { type AnchorHTMLAttributes, type ButtonHTMLAttributes } from "react";
 import { cn } from "@/lib/utils";
 
-const buttonVariants = cva(
+export const buttonVariants = cva(
   "inline-flex items-center justify-center gap-2 rounded-md text-sm font-medium transition-[background-color,box-shadow,transform,opacity] duration-150 ease-out focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent/70 disabled:pointer-events-none disabled:opacity-40 active:not-disabled:scale-[0.96]",
   {
     variants: {
@@ -37,4 +37,14 @@ export function Button({
       {...props}
     />
   );
+}
+
+/** Use for tel/maps/http — a real <a>, not a <button> nested in a link (WebView drops those taps). */
+export function ButtonLink({
+  className,
+  variant,
+  size,
+  ...props
+}: AnchorHTMLAttributes<HTMLAnchorElement> & VariantProps<typeof buttonVariants>) {
+  return <a className={cn(buttonVariants({ variant, size }), className)} {...props} />;
 }

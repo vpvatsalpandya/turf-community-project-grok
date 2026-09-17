@@ -2,13 +2,15 @@ import { createFileRoute, Link } from "@tanstack/react-router";
 import { useEffect, useMemo, useState, type FormEvent } from "react";
 import { toast } from "sonner";
 import { Check, ChevronLeft, MapPin, Navigation, Phone } from "lucide-react";
-import { Button } from "@/components/ui/button";
+import { Button, ButtonLink } from "@/components/ui/button";
 import { Field, Input, Textarea } from "@/components/ui/input";
 import { PitchMark } from "@/components/mark";
+import { ScreenLoader } from "@/components/screen-loader";
 import { mapsDirFromVenue, telHref } from "@/lib/turf/live";
 import { getPublicBoard, requestSlot, type Slot, type Venue } from "@/lib/turf/server";
 import { addDays, formatIstDate, todayIst } from "@/lib/turf/time";
 import { inr } from "@/lib/utils";
+import { PersistBanner } from "@/components/persist-banner";
 
 export const Route = createFileRoute("/b/$slug")({ component: BookPage });
 
@@ -50,6 +52,7 @@ function BookPage() {
   const [busy, setBusy] = useState(false);
   const [done, setDone] = useState<Done | null>(null);
   const [left, setLeft] = useState("");
+  const [persist, setPersist] = useState(true);
 
   useEffect(() => {
     let live = true;
@@ -59,9 +62,13 @@ function BookPage() {
         if (!live) return;
         setVenue(res.venue);
         setSlots(res.slots);
+        setPersist(res.persist !== false);
       })
       .catch(() => {
-        if (live) toast.error("Could not load this turf");
+        if (live) {
+          setVenue(null);
+          setSlots([]);
+        }
       })
       .finally(() => {
         if (live) setLoading(false);
@@ -104,15 +111,23 @@ function BookPage() {
     }
   }
 
+  if (loading && !venue) {
+    return (
+      <main className="min-h-dvh bg-bg">
+        <ScreenLoader label="Loading this turf…" />
+      </main>
+    );
+  }
+
   if (!loading && !venue) {
     return (
       <main className="grid min-h-dvh place-items-center bg-bg px-4 text-center">
         <div>
           <PitchMark className="mx-auto size-12" />
-          <h1 className="mt-4 font-display text-3xl uppercase">Link not live</h1>
+          <h1 className="mt-4 font-display text-3xl uppercase">This desk is not live yet — call the gate</h1>
           <p className="mt-2 text-sm text-muted">This turf has not published a booking page.</p>
           <Link to="/turfs" className="mt-6 inline-block text-sm text-accent">
-            See Vadodara grounds
+            Call a Vadodara ground
           </Link>
         </div>
       </main>
@@ -124,6 +139,7 @@ function BookPage() {
 
   return (
     <main className="mx-auto min-h-dvh max-w-lg bg-bg pb-28">
+      <PersistBanner persist={persist} />
       <header className="sticky top-0 z-10 border-b border-border bg-bg/90 px-4 py-3 backdrop-blur-sm">
         <div className="flex items-center gap-3">
           <Link to="/turfs" className="grid size-11 place-items-center rounded-md hover:bg-raised">
@@ -230,25 +246,25 @@ function BookPage() {
           {venue?.notes ? (
             <p className="px-4 pt-3 text-sm leading-relaxed text-muted">{venue.notes}</p>
           ) : null}
+          <p className="mx-4 mt-3 rounded-md bg-surface px-3 py-2 text-sm text-muted">
+            This is a <span className="text-fg">request</span>, not a booking. The owner confirms after UPI
+            lands. A 20-minute hold is only for the first request on an open pitch.
+          </p>
           <div className="mt-3 grid grid-cols-2 gap-2 px-4">
             {call ? (
-              <a href={call}>
-                <Button variant="secondary" className="w-full" size="sm">
-                  <Phone className="size-4" />
-                  Call gate
-                </Button>
-              </a>
+              <ButtonLink href={call} variant="secondary" className="w-full" size="sm">
+                <Phone className="size-4" />
+                Call gate
+              </ButtonLink>
             ) : (
               <Button variant="secondary" className="w-full" size="sm" disabled>
                 No gate phone
               </Button>
             )}
-            <a href={maps} target="_blank" rel="noreferrer">
-              <Button variant="secondary" className="w-full" size="sm">
-                <Navigation className="size-4" />
-                Directions
-              </Button>
-            </a>
+            <ButtonLink href={maps} target="_blank" rel="noreferrer" variant="secondary" className="w-full" size="sm">
+              <Navigation className="size-4" />
+              Directions
+            </ButtonLink>
           </div>
 
           <div className="flex gap-2 overflow-x-auto px-4 py-4">
@@ -286,7 +302,7 @@ function BookPage() {
               </div>
             ) : (
               slots.map((slot) => {
-                const locked = slot.status !== "open";
+                const locked = slot.status === "past" || slot.status === "full" || slot.status === "blocked";
                 const selected = picked?.startAt === slot.startAt;
                 return (
                   <button
@@ -307,9 +323,17 @@ function BookPage() {
                       <span className={`text-xs ${selected ? "opacity-80" : "text-muted"}`}>
                         {slot.status === "past"
                           ? "Started"
-                          : slot.status === "held"
-                            ? "Full"
-                            : `${slot.openPitches} of ${slot.pitchCount} open`}
+                          : slot.status === "blocked"
+                            ? "Rain — closed"
+                            : slot.status === "full"
+                              ? "Booked"
+                              : slot.openPitches === 0 && slot.heldPitches
+                                ? `Held 20 min — you can still request${
+                                    slot.requestCount ? ` · ${slot.requestCount} waiting` : ""
+                                  }`
+                                : `${slot.openPitches} of ${slot.pitchCount} open${
+                                    slot.requestCount ? ` · ${slot.requestCount} requested` : ""
+                                  }${slot.heldPitches ? " · held 20 min" : ""}`}
                       </span>
                     </span>
                     <span className="tabular-nums text-sm font-medium">{inr(slot.amountInr)}</span>

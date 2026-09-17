@@ -2,13 +2,14 @@ import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
 import { useEffect, useState } from "react";
 import { ArrowRight } from "lucide-react";
 import { PitchMark } from "@/components/mark";
-import { Button } from "@/components/ui/button";
+import { buttonVariants } from "@/components/ui/button";
+import { ScreenLoader } from "@/components/screen-loader";
 import { WaConnect } from "@/components/wa-connect";
 import { RedirectToSignIn, UserButton } from "@/lib/auth/gates";
 import { useCurrentUserState } from "@/lib/auth/use-current-user";
 import { getMyProfile, listAdminBoard } from "@/lib/turf/server";
 import { formatIstTime } from "@/lib/turf/time";
-import { inr } from "@/lib/utils";
+import { cn, inr } from "@/lib/utils";
 
 export const Route = createFileRoute("/admin")({ component: AdminPage });
 
@@ -42,9 +43,20 @@ function AdminPage() {
   }, [isPending, user, navigate]);
 
   if (isPending) {
-    return <main className="grid min-h-dvh place-items-center bg-bg text-muted">Loading HQ…</main>;
+    return (
+      <main className="min-h-dvh bg-bg">
+        <ScreenLoader label="Opening HQ…" />
+      </main>
+    );
   }
   if (!user) return <RedirectToSignIn />;
+  if (!board) {
+    return (
+      <main className="min-h-dvh bg-bg">
+        <ScreenLoader label="Loading live turfs…" />
+      </main>
+    );
+  }
 
   return (
     <main className="mx-auto min-h-dvh max-w-lg bg-bg pb-16">
@@ -66,12 +78,10 @@ function AdminPage() {
         </p>
       </section>
 
-      {board ? (
-        <>
-          <section className="mt-5 grid grid-cols-3 gap-2 px-4">
+      <section className="mt-5 grid grid-cols-3 gap-2 px-4">
             <Stat label="On Community" value={String(board.onCommunity)} />
             <Stat label="Directory" value={String(board.directoryTotal)} />
-            <Stat label="Pending" value={String(board.pending)} />
+            <Stat label="Requests" value={String(board.pending)} />
           </section>
 
           <section className="mt-8 px-4">
@@ -91,7 +101,7 @@ function AdminPage() {
                         {row.venueName} · {formatIstTime(row.startAt)} · {inr(row.amountInr)}
                       </p>
                     </div>
-                    <span className={`text-xs uppercase ${row.status === "pending" ? "text-warn" : "text-accent"}`}>
+                    <span className={`text-xs uppercase ${row.status === "requested" || row.status === "pending" ? "text-warn" : "text-accent"}`}>
                       {row.status}
                     </span>
                   </li>
@@ -112,11 +122,13 @@ function AdminPage() {
                   <p className="mt-1 text-xs text-muted">
                     {v.area || v.city} · from {inr(v.priceInr)}/hr
                   </p>
-                  <Link to="/b/$slug" params={{ slug: v.slug }} className="mt-3 block">
-                    <Button variant="secondary" size="sm" className="w-full">
-                      Public page
-                      <ArrowRight className="size-4" />
-                    </Button>
+                  <Link
+                    to="/b/$slug"
+                    params={{ slug: v.slug }}
+                    className={cn(buttonVariants({ variant: "secondary", size: "sm" }), "mt-3 w-full")}
+                  >
+                    Public page
+                    <ArrowRight className="size-4" />
                   </Link>
                 </li>
               ))}
@@ -125,13 +137,6 @@ function AdminPage() {
           <section className="mt-8 px-4 pb-10">
             <WaConnect title="Platform WhatsApp" />
           </section>
-        </>
-      ) : (
-        <div className="mt-6 space-y-3 px-4">
-          <div className="h-20 animate-pulse rounded-lg bg-surface" />
-          <div className="h-32 animate-pulse rounded-lg bg-surface" />
-        </div>
-      )}
     </main>
   );
 }

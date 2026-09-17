@@ -32,3 +32,10 @@ export function normalizePhone(raw: string) {
 export function isValidInPhone(raw: string) {
   return /^[6-9]\d{9}$/.test(normalizePhone(raw));
 }
+
+export function inrCompact(amountInr: number) {
+  const n = Math.round(amountInr);
+  if (n >= 100000) return `₹${(n / 100000).toFixed(1)}L`;
+  if (n >= 1000) return `₹${(n / 1000).toFixed(1)}k`;
+  return inr(n);
+}

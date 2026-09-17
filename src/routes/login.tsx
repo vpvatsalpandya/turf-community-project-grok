@@ -4,16 +4,20 @@ import { GROK_PROVIDERS, authClient, authEnabled, signIn } from "@/lib/auth/clie
 import { Button } from "@/components/ui/button";
 import { Field, Input } from "@/components/ui/input";
 import { PitchMark } from "@/components/mark";
+import { ScreenLoader } from "@/components/screen-loader";
 import { useCurrentUserState } from "@/lib/auth/use-current-user";
 import { DEMO_LOGINS, type DemoLogin } from "@/lib/turf/demo-logins";
-import { getLiveConfig, getMyProfile, prepareDemoLogins } from "@/lib/turf/server";
+import { claimSignupRole, getLiveConfig, getMyProfile, prepareDemoLogins } from "@/lib/turf/server";
 
 export const Route = createFileRoute("/login")({ component: Login });
+
+type Intent = "player" | "owner";
 
 function Login() {
   const { user, isPending } = useCurrentUserState();
   const navigate = useNavigate();
   const [mode, setMode] = useState<"in" | "up">("in");
+  const [intent, setIntent] = useState<Intent>("player");
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [name, setName] = useState("");
@@ -39,11 +43,15 @@ function Login() {
     if (!user) return;
     getMyProfile()
       .then((p) => setSignedHome(p.home))
-      .catch(() => setSignedHome("/desk"));
+      .catch(() => setSignedHome("/play"));
   }, [user]);
 
   if (isPending) {
-    return <main className="grid min-h-dvh place-items-center bg-bg text-muted">Loading…</main>;
+    return (
+      <main className="min-h-dvh bg-bg">
+        <ScreenLoader label="Opening sign in…" />
+      </main>
+    );
   }
   if (user && signedHome) return <Navigate to={signedHome} />;
 
@@ -52,7 +60,7 @@ function Login() {
       const p = await getMyProfile();
       await navigate({ to: p.home });
     } catch {
-      await navigate({ to: "/desk" });
+      await navigate({ to: intent === "owner" ? "/desk" : "/play" });
     }
   }
 
@@ -64,6 +72,7 @@ function Login() {
       if (mode === "up") {
         const res = await authClient.signUp.email({ email, password, name });
         if (res.error) throw new Error(res.error.message || "Could not create account");
+        await claimSignupRole({ data: { role: intent } });
       } else {
         const res = await authClient.signIn.email({ email, password });
         if (res.error) throw new Error(res.error.message || "Could not sign in");
@@ -91,6 +100,13 @@ function Login() {
     }
   }
 
+  function startOauth(providerId: string) {
+    if (typeof window !== "undefined") {
+      window.localStorage.setItem("turf-signup-role", intent);
+    }
+    signIn(providerId, { callbackURL: "/welcome" });
+  }
+
   return (
     <main className="mx-auto min-h-dvh max-w-sm bg-bg px-4 py-10">
       <Link to="/" className="flex items-center gap-2 text-fg">
@@ -100,11 +116,15 @@ function Login() {
         </span>
       </Link>
 
-      <h1 className="mt-8 font-display text-4xl tracking-tight uppercase">Sign in</h1>
+      <h1 className="mt-8 font-display text-4xl tracking-tight uppercase">
+        {mode === "up" ? "Create account" : "Sign in"}
+      </h1>
       <p className="mt-1 text-sm text-muted">
         {demo
           ? "Five desks: player, gate staff, manager, turf owner, and platform HQ. Tap one, or use your own email."
-          : "Owner login. Create an account if you run a ground."}
+          : mode === "up"
+            ? "One app. Players book nights. Owners run the desk."
+            : "Players and turf owners use the same sign-in."}
       </p>
 
       {demo ? (
@@ -128,6 +148,29 @@ function Login() {
       </section>
       ) : null}
 
+      {mode === "up" ? (
+        <div className="mt-6 grid grid-cols-2 gap-2">
+          <button
+            type="button"
+            onClick={() => setIntent("player")}
+            className={`h-12 rounded-md text-sm font-medium ${
+              intent === "player" ? "bg-accent text-accent-fg" : "bg-surface text-muted"
+            }`}
+          >
+            I play
+          </button>
+          <button
+            type="button"
+            onClick={() => setIntent("owner")}
+            className={`h-12 rounded-md text-sm font-medium ${
+              intent === "owner" ? "bg-accent text-accent-fg" : "bg-surface text-muted"
+            }`}
+          >
+            I run a turf
+          </button>
+        </div>
+      ) : null}
+
       <div className="my-6 flex items-center gap-3 text-xs text-faint">
         <span className="h-px flex-1 bg-border" />
         or continue
@@ -141,7 +184,7 @@ function Login() {
               key={p.providerId}
               variant="secondary"
               className="w-full"
-              onClick={() => signIn(p.providerId, { callbackURL: "/desk" })}
+              onClick={() => startOauth(p.providerId)}
             >
               Continue with {p.label}
             </Button>
@@ -159,7 +202,11 @@ function Login() {
 
       <form onSubmit={onEmail} className="space-y-3">
         {mode === "up" ? (
-          <Field label="Your name" required hint="The person who runs the ground. Not shown on the public page.">
+          <Field
+            label="Your name"
+            required
+            hint={intent === "owner" ? "The person who runs the ground." : "What captains should call you."}
+          >
             <Input
               value={name}
               onChange={(e) => setName(e.target.value)}
@@ -189,7 +236,13 @@ function Login() {
         </Field>
         {error ? <p className="text-sm text-danger">{error}</p> : null}
         <Button type="submit" className="w-full" disabled={busy}>
-          {busy ? "Please wait…" : mode === "up" ? "Create owner account" : "Sign in with email"}
+          {busy
+            ? "Please wait…"
+            : mode === "up"
+              ? intent === "owner"
+                ? "Create owner account"
+                : "Create player account"
+              : "Sign in with email"}
         </Button>
       </form>
 
@@ -198,10 +251,10 @@ function Login() {
         className="mt-3 text-sm text-muted underline-offset-4 hover:text-fg hover:underline"
         onClick={() => setMode(mode === "up" ? "in" : "up")}
       >
-        {mode === "up" ? "Already have an account? Sign in" : "New turf? Create an owner account"}
+        {mode === "up" ? "Already have an account? Sign in" : "New here? Create an account"}
       </button>
       <Link to="/learn" className="mt-4 block text-center text-sm text-muted underline-offset-4 hover:text-fg hover:underline">
-        What do I need to fill? Owner academy
+        Owner academy
       </Link>
     </main>
   );

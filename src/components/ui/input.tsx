@@ -60,7 +60,7 @@ export function Field({
     <label className="flex flex-col gap-1.5">
       <span className="text-xs font-medium tracking-wide text-muted uppercase">
         {label}
-        {required ? <span className="text-accent"> · needed</span> : null}
+        {required ? <span className="text-accent"> *</span> : null}
       </span>
       {children}
       {hint ? <span className="text-xs leading-snug text-faint">{hint}</span> : null}
